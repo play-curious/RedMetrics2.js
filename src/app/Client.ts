@@ -40,23 +40,23 @@ export const defaultDevConfig: ApiConfig = {
 export class Client {
   protected eventQueue: Set<
     Omit<types.RMEvent, "server_time" | "game_session_id">
-    > = new Set();
+  > = new Set();
   protected bufferingInterval: any = null;
   protected gameSessionId?: string;
   protected connected = false;
   protected session?: types.Session;
   protected db: axios.AxiosInstance;
-  
+
   constructor(public readonly config: ClientConfig) {
     const { protocol, port, host } = config.apiConfig ?? defaultApiConfig;
-    
+
     const axiosConfig: axios.AxiosRequestConfig = {
       params: { apikey: config.apiKey },
       baseURL: `${protocol}://${host}${port ? `:${port}` : ""}`,
     };
-    
+
     this.db = axios.default.create(axiosConfig);
-    
+
     this.connect()
       .then(() => console.log("✔ redmetrics client connected"))
       .catch((error) => {
@@ -64,17 +64,17 @@ export class Client {
         console.error(error, axiosConfig);
       });
   }
-  
+
   get isConnected(): boolean {
     return this.connected;
   }
-  
+
   public async connect(): Promise<void> {
     if (this.connected)
       throw new Error("RedMetrics client is already connected");
-    
+
     const { data: session } = await this.db.get<types.Session>(`/v2/session`);
-    
+
     if (session.game_id) {
       if (!this.config.gameSession?.gameVersionId) {
         throw new Error(
@@ -84,7 +84,7 @@ export class Client {
           ].join(" ")
         );
       }
-      
+
       const gameSession: types.GameSession = {
         game_version_id: this.config.gameSession.gameVersionId,
         screen_size: this.config.gameSession.screenSize,
@@ -93,34 +93,34 @@ export class Client {
         platform: this.config.gameSession.platform,
         custom_data: this.config.gameSession.customData,
       };
-      
+
       const {
         data: { id: gameSessionId },
       } = await this.db.post<{ id: string }>(`/v2/game-session`, gameSession);
-      
+
       this.gameSessionId = gameSessionId;
     }
-    
+
     this.session = session;
     this.connected = true;
-    
+
     this.bufferingInterval = setInterval(
       this.buff.bind(this),
       this.config.bufferingDelay ?? 60000
     );
   }
-  
+
   public async disconnect(): Promise<void> {
     if (!this.connected) throw new Error("RedMetrics client is not connected");
-    
+
     clearInterval(this.bufferingInterval);
-    
+
     await this.buff();
-    
+
     this.bufferingInterval = null;
     this.connected = false;
   }
-  
+
   private async buff(): Promise<void> {
     if (this.connected && this.eventQueue.size > 0)
       await Promise.all(
@@ -128,13 +128,13 @@ export class Client {
       );
     else return Promise.resolve();
   }
-  
+
   private async sendEvent(
     event: Omit<types.RMEvent, "server_time" | "id" | "game_session_id">
   ) {
     if (!this.gameSessionId)
       throw new Error("The game session is not created: internal error...");
-    
+
     await this.db
       .post("/v2/event", { ...event, game_session_id: this.gameSessionId })
       .then(() => {
@@ -142,13 +142,13 @@ export class Client {
         this.eventQueue.delete(event);
       });
   }
-  
+
   public emit(
     type: types.RMEvent["type"],
     event: Omit<
       types.RMEvent,
       "user_time" | "type" | "server_time" | "id" | "game_session_id"
-      >
+    >
   ) {
     this.eventQueue.add({
       ...event,
