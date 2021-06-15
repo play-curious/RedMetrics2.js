@@ -1,5 +1,5 @@
 import * as axios from "axios";
-import * as types from "rm2-typings/src/index";
+import * as types from "rm2-typings";
 
 export interface ApiConfig {
   protocol: string;
