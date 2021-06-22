@@ -28,8 +28,8 @@ export declare class Client {
     protected bufferingInterval: any;
     protected gameSessionId?: string;
     protected connected: boolean;
-    protected session?: types.Session;
-    protected db: axios.AxiosInstance;
+    protected apiKey?: types.ApiKey;
+    protected api: axios.AxiosInstance;
     constructor(config: ClientConfig);
     get isConnected(): boolean;
     connect(): Promise<void>;

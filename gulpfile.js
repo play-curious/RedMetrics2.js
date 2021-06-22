@@ -13,7 +13,7 @@ function iife() {
         format: "iife",
         minify: true,
         bundle: true,
-        target: ["chrome58", "firefox57", "safari11", "edge16", "node14"],
+        target: ["es2020", "chrome58", "firefox57", "safari11"],
         globalName: "RedMetrics",
         loader: {
           ".ts": "ts",

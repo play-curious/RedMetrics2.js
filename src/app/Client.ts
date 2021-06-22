@@ -44,8 +44,8 @@ export class Client {
   protected bufferingInterval: any = null;
   protected gameSessionId?: string;
   protected connected = false;
-  protected session?: types.Session;
-  protected db: axios.AxiosInstance;
+  protected apiKey?: types.ApiKey;
+  protected api: axios.AxiosInstance;
 
   constructor(public readonly config: ClientConfig) {
     const { protocol, port, host } = config.apiConfig ?? defaultApiConfig;
@@ -55,7 +55,7 @@ export class Client {
       baseURL: `${protocol}://${host}${port ? `:${port}` : ""}`,
     };
 
-    this.db = axios.default.create(axiosConfig);
+    this.api = axios.default.create(axiosConfig);
 
     this.connect()
       .then(() => console.log("✔ redmetrics client connected"))
@@ -73,7 +73,7 @@ export class Client {
     if (this.connected)
       throw new Error("RedMetrics client is already connected");
 
-    const { data: session } = await this.db.get<types.Session>(`/v2/session`);
+    const { data: session } = await this.api.get<types.ApiKey>(`/v2/session`);
 
     if (session.game_id) {
       if (!this.config.gameSession?.gameVersionId) {
@@ -85,7 +85,7 @@ export class Client {
         );
       }
 
-      const gameSession: types.GameSession = {
+      const gameSession: types.Session = {
         game_version_id: this.config.gameSession.gameVersionId,
         screen_size: this.config.gameSession.screenSize,
         software: this.config.gameSession.software,
@@ -96,12 +96,12 @@ export class Client {
 
       const {
         data: { id: gameSessionId },
-      } = await this.db.post<{ id: string }>(`/v2/game-session`, gameSession);
+      } = await this.api.post<{ id: string }>(`/v2/game-session`, gameSession);
 
       this.gameSessionId = gameSessionId;
     }
 
-    this.session = session;
+    this.apiKey = session;
     this.connected = true;
 
     this.bufferingInterval = setInterval(
@@ -135,7 +135,7 @@ export class Client {
     if (!this.gameSessionId)
       throw new Error("The game session is not created: internal error...");
 
-    await this.db
+    await this.api
       .post("/v2/event", { ...event, game_session_id: this.gameSessionId })
       .then(() => {
         console.info(`emitted event: [${event.type}]`);

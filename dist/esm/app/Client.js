@@ -20,7 +20,7 @@ export class Client {
             params: { apikey: config.apiKey },
             baseURL: `${protocol}://${host}${port ? `:${port}` : ""}`,
         };
-        this.db = axios.default.create(axiosConfig);
+        this.api = axios.default.create(axiosConfig);
         this.connect()
             .then(() => console.log("✔ redmetrics client connected"))
             .catch((error) => {
@@ -34,7 +34,7 @@ export class Client {
     async connect() {
         if (this.connected)
             throw new Error("RedMetrics client is already connected");
-        const { data: session } = await this.db.get(`/v2/session`);
+        const { data: session } = await this.api.get(`/v2/session`);
         if (session.game_id) {
             if (!this.config.gameSession?.gameVersionId) {
                 throw new Error([
@@ -50,10 +50,10 @@ export class Client {
                 platform: this.config.gameSession.platform,
                 custom_data: this.config.gameSession.customData,
             };
-            const { data: { id: gameSessionId }, } = await this.db.post(`/v2/game-session`, gameSession);
+            const { data: { id: gameSessionId }, } = await this.api.post(`/v2/game-session`, gameSession);
             this.gameSessionId = gameSessionId;
         }
-        this.session = session;
+        this.apiKey = session;
         this.connected = true;
         this.bufferingInterval = setInterval(this.buff.bind(this), this.config.bufferingDelay ?? 60000);
     }
@@ -74,7 +74,7 @@ export class Client {
     async sendEvent(event) {
         if (!this.gameSessionId)
             throw new Error("The game session is not created: internal error...");
-        await this.db
+        await this.api
             .post("/v2/event", { ...event, game_session_id: this.gameSessionId })
             .then(() => {
             console.info(`emitted event: [${event.type}]`);
