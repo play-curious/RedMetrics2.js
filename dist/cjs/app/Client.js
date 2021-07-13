@@ -19,17 +19,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Client = exports.defaultDevConfig = exports.defaultApiConfig = void 0;
+exports.Client = void 0;
 const axios = __importStar(require("axios"));
-exports.defaultApiConfig = {
-    protocol: "https",
-    host: "api.redmetrics.io",
-};
-exports.defaultDevConfig = {
-    protocol: "http",
-    host: "localhost",
-    port: "6627",
-};
 // todo start game session if gamesessionid not exists
 class Client {
     constructor(config) {
@@ -37,7 +28,7 @@ class Client {
         this.eventQueue = new Set();
         this.bufferingInterval = null;
         this.connected = false;
-        const { protocol, port, host } = config.apiConfig ?? exports.defaultApiConfig;
+        const { protocol, port, host } = config.apiConfig;
         const axiosConfig = {
             params: { apikey: config.apiKey },
             baseURL: `${protocol}://${host}${port ? `:${port}` : ""}`,

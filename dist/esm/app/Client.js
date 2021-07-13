@@ -1,13 +1,4 @@
 import * as axios from "axios";
-export const defaultApiConfig = {
-    protocol: "https",
-    host: "api.redmetrics.io",
-};
-export const defaultDevConfig = {
-    protocol: "http",
-    host: "localhost",
-    port: "6627",
-};
 // todo start game session if gamesessionid not exists
 export class Client {
     constructor(config) {
@@ -15,7 +6,7 @@ export class Client {
         this.eventQueue = new Set();
         this.bufferingInterval = null;
         this.connected = false;
-        const { protocol, port, host } = config.apiConfig ?? defaultApiConfig;
+        const { protocol, port, host } = config.apiConfig;
         const axiosConfig = {
             params: { apikey: config.apiKey },
             baseURL: `${protocol}://${host}${port ? `:${port}` : ""}`,

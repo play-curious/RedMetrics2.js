@@ -1,15 +1,10 @@
 import * as axios from "axios";
 import * as types from "rm2-typings";
-
-export interface ApiConfig {
-  protocol: string;
-  host: string;
-  port?: number | string;
-  route?: string;
-}
+import { config } from "dotenv";
 
 export interface GameSessionConfig {
-  gameVersionId: string;
+  gameId: string;
+  gameVersion?: string;
   customData?: object;
   externalId?: string;
   platform?: string;
@@ -19,40 +14,26 @@ export interface GameSessionConfig {
 
 export interface ClientConfig {
   apiKey: string;
-  apiConfig?: ApiConfig;
+  baseUrl: string;
+  gameSession: GameSessionConfig;
   bufferingDelay?: number;
-  gameSession?: GameSessionConfig;
 }
-
-export const defaultApiConfig: ApiConfig = {
-  protocol: "https",
-  host: "api.redmetrics.io",
-};
-
-export const defaultDevConfig: ApiConfig = {
-  protocol: "http",
-  host: "localhost",
-  port: "6627",
-};
 
 // todo start game session if gamesessionid not exists
 
 export class Client {
   protected eventQueue: Set<
-    Omit<types.RMEvent, "server_time" | "game_session_id">
+    Omit<types.tables.Event, "server_time" | "game_session_id">
   > = new Set();
   protected bufferingInterval: any = null;
   protected gameSessionId?: string;
   protected connected = false;
-  protected apiKey?: types.ApiKey;
   protected api: axios.AxiosInstance;
 
   constructor(public readonly config: ClientConfig) {
-    const { protocol, port, host } = config.apiConfig ?? defaultApiConfig;
-
     const axiosConfig: axios.AxiosRequestConfig = {
       params: { apikey: config.apiKey },
-      baseURL: `${protocol}://${host}${port ? `:${port}` : ""}`,
+      baseURL: config.baseUrl,
     };
 
     this.api = axios.default.create(axiosConfig);
@@ -73,25 +54,22 @@ export class Client {
     if (this.connected)
       throw new Error("RedMetrics client is already connected");
 
-    const { data: session } = await this.api.get<types.ApiKey>(`/v2/session`);
+    const { data: session } = await this.api.get<
+      types.api.Session["Get"]["Response"]
+    >(`/session`);
 
-    if (session.game_id) {
-      if (!this.config.gameSession?.gameVersionId) {
-        throw new Error(
-          [
-            "You linked a game to your API key but you did not enter the game version.",
-            "Please define the `gameSession.gameVersionId` key from the client config.",
-          ].join(" ")
-        );
-      }
-
-      const gameSession: types.Session = {
-        game_version_id: this.config.gameSession.gameVersionId,
+    if (!session) {
+      const gameSession: types.api.Session["Post"]["Body"] = {
+        game_id: this.config.gameSession.gameId,
+        version: this.config.gameSession.gameVersion,
         screen_size: this.config.gameSession.screenSize,
         software: this.config.gameSession.software,
         external_id: this.config.gameSession.externalId,
         platform: this.config.gameSession.platform,
-        custom_data: this.config.gameSession.customData,
+        custom_data:
+          this.config.gameSession.customData === undefined
+            ? undefined
+            : JSON.stringify(this.config.gameSession.customData),
       };
 
       const {
@@ -99,9 +77,10 @@ export class Client {
       } = await this.api.post<{ id: string }>(`/v2/game-session`, gameSession);
 
       this.gameSessionId = gameSessionId;
+    } else {
+      this.gameSessionId = session.id;
     }
 
-    this.apiKey = session;
     this.connected = true;
 
     this.bufferingInterval = setInterval(

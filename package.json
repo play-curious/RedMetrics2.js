@@ -7,13 +7,14 @@
   "module": "dist/esm/index.js",
   "browser": "dist/iife/redmetrics.bundle.js",
   "scripts": {
+    "format": "prettier --write src gulpfile.js tsconfig.*",
     "bundle": "gulp bundle",
     "watch": "gulp watch",
     "iife": "gulp iife",
     "cjs": "gulp cjs",
     "esm": "gulp esm",
-    "format": "prettier --write src gulpfile.js tsconfig.*",
-    "test": "jest"
+    "test": "jest",
+    "types": "npm up rm2-typings -f"
   },
   "devDependencies": {
     "@types/jest": "^26.0.23",
@@ -30,6 +31,6 @@
   },
   "dependencies": {
     "axios": "^0.21.1",
-    "rm2-typings": "git+https://github.com/play-curious/RedMetrics2-typing.git"
+    "rm2-typings": "git+https://github.com/play-curious/RedMetrics2-typing.git#new-perm"
   }
 }
