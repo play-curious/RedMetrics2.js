@@ -13,7 +13,7 @@
     "cjs": "gulp cjs",
     "esm": "gulp esm",
     "format": "prettier --write src gulpfile.js tsconfig.*",
-    "test": "jest"
+    "test": "yarn cjs && jest"
   },
   "devDependencies": {
     "@types/jest": "^26.0.23",

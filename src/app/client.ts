@@ -9,7 +9,7 @@ export interface ApiConfig {
 }
 
 export interface GameSessionConfig {
-  gameVersionId: string;
+  gameVersionId?: string;
   customData?: object;
   externalId?: string;
   platform?: string;
@@ -19,6 +19,7 @@ export interface GameSessionConfig {
 
 export interface ClientConfig {
   apiKey: string;
+  gameId: string;
   apiConfig?: ApiConfig;
   bufferingDelay?: number;
   gameSession?: GameSessionConfig;
@@ -27,33 +28,29 @@ export interface ClientConfig {
 export const defaultApiConfig: ApiConfig = {
   protocol: "https",
   host: "api.redmetrics.io",
+  port: 443,
 };
-
-export const defaultDevConfig: ApiConfig = {
-  protocol: "http",
-  host: "localhost",
-  port: "6627",
-};
-
-// todo start game session if gamesessionid not exists
 
 export class Client {
   protected eventQueue: Set<
     Omit<types.RMEvent, "server_time" | "game_session_id">
   > = new Set();
   protected bufferingInterval: any = null;
-  protected gameSessionId?: string;
   protected connected = false;
-  protected apiKey?: types.ApiKey;
   protected api: axios.AxiosInstance;
+  protected gameSessionId?: string;
 
   constructor(public readonly config: ClientConfig) {
-    const { protocol, port, host } = config.apiConfig ?? defaultApiConfig;
+    const protocol = config.apiConfig?.protocol || defaultApiConfig.protocol;
+    const host = config.apiConfig?.host || defaultApiConfig.host;
+    const port = config.apiConfig?.port;
 
     const axiosConfig: axios.AxiosRequestConfig = {
       params: { apikey: config.apiKey },
       baseURL: `${protocol}://${host}${port ? `:${port}` : ""}`,
     };
+
+    console.log(`Created RedMetrics client for ${axiosConfig.baseURL}`);
 
     this.api = axios.default.create(axiosConfig);
 
@@ -73,35 +70,31 @@ export class Client {
     if (this.connected)
       throw new Error("RedMetrics client is already connected");
 
-    const { data: session } = await this.api.get<types.ApiKey>(`/v2/session`);
+    const gameSession: types.Session = {
+      // TODO: a game version should not be required
+      game_version_id: this.config.gameSession?.gameVersionId || "",
 
-    if (session.game_id) {
-      if (!this.config.gameSession?.gameVersionId) {
-        throw new Error(
-          [
-            "You linked a game to your API key but you did not enter the game version.",
-            "Please define the `gameSession.gameVersionId` key from the client config.",
-          ].join(" ")
-        );
-      }
+      screen_size: this.config.gameSession?.screenSize,
+      software: this.config.gameSession?.software,
+      external_id: this.config.gameSession?.externalId,
+      platform: this.config.gameSession?.platform,
+      custom_data: this.config.gameSession?.customData,
+    };
 
-      const gameSession: types.Session = {
-        game_version_id: this.config.gameSession.gameVersionId,
-        screen_size: this.config.gameSession.screenSize,
-        software: this.config.gameSession.software,
-        external_id: this.config.gameSession.externalId,
-        platform: this.config.gameSession.platform,
-        custom_data: this.config.gameSession.customData,
-      };
+    // TODO: creating a session should not require a game id
+    const gameSessionData = {
+      game_id: this.config.gameId,
+      ...gameSession,
+    };
 
-      const {
-        data: { id: gameSessionId },
-      } = await this.api.post<{ id: string }>(`/v2/game-session`, gameSession);
+    console.log("posting gameSessionData", gameSessionData);
 
-      this.gameSessionId = gameSessionId;
-    }
+    const {
+      data: { id: gameSessionId },
+    } = await this.api.post<{ id: string }>(`/v2/session`, gameSessionData);
 
-    this.apiKey = session;
+    this.gameSessionId = gameSessionId;
+
     this.connected = true;
 
     this.bufferingInterval = setInterval(
@@ -113,20 +106,26 @@ export class Client {
   public async disconnect(): Promise<void> {
     if (!this.connected) throw new Error("RedMetrics client is not connected");
 
+    console.log("Disconnecting...");
     clearInterval(this.bufferingInterval);
 
     await this.buff();
+
+    console.log("Disconnected...");
 
     this.bufferingInterval = null;
     this.connected = false;
   }
 
   private async buff(): Promise<void> {
-    if (this.connected && this.eventQueue.size > 0)
+    if (this.connected && this.eventQueue.size > 0) {
+      console.log(`Sending ${this.eventQueue.size} events`);
       await Promise.all(
         Array.from(this.eventQueue).map(this.sendEvent.bind(this))
       );
-    else return Promise.resolve();
+    } else {
+      return Promise.resolve();
+    }
   }
 
   private async sendEvent(

@@ -3,12 +3,16 @@ require("dotenv/config");
 describe("cjs", () => {
   const RedMetrics = require(".");
 
+  console.log("found game ID", process.env.GAME_ID);
+
   const client = new RedMetrics.Client({
     bufferingDelay: 1000,
     apiKey: process.env.API_KEY,
-    apiConfig: RedMetrics.defaultDevConfig,
-    gameSession: {
-      gameVersionId: "7fe48815-5d14-4e35-9c49-adc5d782c9ae",
+    gameId: process.env.GAME_ID,
+    apiConfig: {
+      protocol: process.env.PROTOCOL,
+      host: process.env.HOST,
+      port: process.env.PORT,
     },
   });
 
@@ -37,7 +41,7 @@ describe("cjs", () => {
   test("disconnect", (cb) => {
     client
       .disconnect()
-      .then(() => cb)
+      .then(() => cb())
       .catch(cb);
   });
 });
