@@ -1,6 +1,5 @@
 import * as axios from "axios";
 import * as types from "rm2-typings";
-import { config } from "dotenv";
 
 export interface GameSessionConfig {
   gameId: string;
@@ -31,18 +30,16 @@ export class Client {
   protected api: axios.AxiosInstance;
 
   constructor(public readonly config: ClientConfig) {
-    const axiosConfig: axios.AxiosRequestConfig = {
+    this.api = axios.default.create({
       params: { apikey: config.apiKey },
       baseURL: config.baseUrl,
-    };
-
-    this.api = axios.default.create(axiosConfig);
+    });
 
     this.connect()
       .then(() => console.log("✔ redmetrics client connected"))
       .catch((error) => {
         console.error("❌ redmetrics client not connected");
-        console.error(error, axiosConfig);
+        console.error(error);
       });
   }
 
@@ -54,13 +51,13 @@ export class Client {
     if (this.connected)
       throw new Error("RedMetrics client is already connected");
 
-    const { data: session } = await this.api.get<
-      types.api.Session["Get"]["Response"]
-    >(`/session`);
+    const route: types.api.Key["Route"] = `/key`;
+    const { data: apiKey } = await this.api.get<
+      types.api.Key["Get"]["Response"]
+    >(route);
 
-    if (!session) {
-      const gameSession: types.api.Session["Post"]["Body"] = {
-        game_id: this.config.gameSession.gameId,
+    if (!apiKey) {
+      const session: types.api.Session["Post"]["Body"] = {
         version: this.config.gameSession.gameVersion,
         screen_size: this.config.gameSession.screenSize,
         software: this.config.gameSession.software,
@@ -72,13 +69,11 @@ export class Client {
             : JSON.stringify(this.config.gameSession.customData),
       };
 
-      const {
-        data: { id: gameSessionId },
-      } = await this.api.post<{ id: string }>(`/v2/game-session`, gameSession);
+      const { data } = await this.api.post(`/v2/session`, session);
 
-      this.gameSessionId = gameSessionId;
+      this.gameSessionId = data;
     } else {
-      this.gameSessionId = session.id;
+      this.gameSessionId = apiKey.key;
     }
 
     this.connected = true;

@@ -12,7 +12,7 @@ describe("cjs", () => {
     },
   });
 
-  test("wait 2s", (cb) => {
+  beforeAll((cb) => {
     setTimeout(() => cb(), 2000);
   });
 
@@ -34,7 +34,7 @@ describe("cjs", () => {
     });
   });
 
-  test("disconnect", (cb) => {
+  afterAll((cb) => {
     client
       .disconnect()
       .then(() => cb)
