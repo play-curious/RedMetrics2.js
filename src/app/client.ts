@@ -21,9 +21,10 @@ export interface ClientConfig {
 // todo start game session if gamesessionid not exists
 
 export class Client {
-  protected eventQueue: Set<
-    Omit<types.tables.Event, "server_time" | "game_session_id">
-  > = new Set();
+  protected eventQueue: Omit<
+    types.tables.Event,
+    "server_time" | "session_id" | "id"
+  >[] = [];
   protected bufferingInterval: any = null;
   protected gameSessionId?: string;
   protected connected = false;
@@ -96,7 +97,7 @@ export class Client {
   }
 
   private async buff(): Promise<void> {
-    if (this.connected && this.eventQueue.size > 0)
+    if (this.connected && this.eventQueue.length > 0)
       await Promise.all(
         Array.from(this.eventQueue).map(this.sendEvent.bind(this))
       );
@@ -104,7 +105,7 @@ export class Client {
   }
 
   private async sendEvent(
-    event: Omit<types.RMEvent, "server_time" | "id" | "game_session_id">
+    event: Omit<types.tables.Event, "server_time" | "id" | "session_id">
   ) {
     if (!this.gameSessionId)
       throw new Error("The game session is not created: internal error...");
@@ -113,18 +114,18 @@ export class Client {
       .post("/v2/event", { ...event, game_session_id: this.gameSessionId })
       .then(() => {
         console.info(`emitted event: [${event.type}]`);
-        this.eventQueue.delete(event);
+        this.eventQueue.splice(this.eventQueue.indexOf(event), 1);
       });
   }
 
   public emit(
-    type: types.RMEvent["type"],
+    type: types.EventType,
     event: Omit<
-      types.RMEvent,
+      types.tables.Event,
       "user_time" | "type" | "server_time" | "id" | "game_session_id"
     >
   ) {
-    this.eventQueue.add({
+    this.eventQueue.push({
       ...event,
       type,
       user_time: new Date().toISOString(),

@@ -1,13 +1,8 @@
 import * as axios from "axios";
 import * as types from "rm2-typings";
-export interface ApiConfig {
-    protocol: string;
-    host: string;
-    port?: number | string;
-    route?: string;
-}
 export interface GameSessionConfig {
-    gameVersionId: string;
+    gameId: string;
+    gameVersion?: string;
     customData?: object;
     externalId?: string;
     platform?: string;
@@ -16,19 +11,16 @@ export interface GameSessionConfig {
 }
 export interface ClientConfig {
     apiKey: string;
-    apiConfig?: ApiConfig;
+    baseUrl: string;
+    gameSession: GameSessionConfig;
     bufferingDelay?: number;
-    gameSession?: GameSessionConfig;
 }
-export declare const defaultApiConfig: ApiConfig;
-export declare const defaultDevConfig: ApiConfig;
 export declare class Client {
     readonly config: ClientConfig;
-    protected eventQueue: Set<Omit<types.RMEvent, "server_time" | "game_session_id">>;
+    protected eventQueue: Omit<types.tables.Event, "server_time" | "session_id" | "id">[];
     protected bufferingInterval: any;
     protected gameSessionId?: string;
     protected connected: boolean;
-    protected apiKey?: types.ApiKey;
     protected api: axios.AxiosInstance;
     constructor(config: ClientConfig);
     get isConnected(): boolean;
@@ -36,5 +28,5 @@ export declare class Client {
     disconnect(): Promise<void>;
     private buff;
     private sendEvent;
-    emit(type: types.RMEvent["type"], event: Omit<types.RMEvent, "user_time" | "type" | "server_time" | "id" | "game_session_id">): void;
+    emit(type: types.EventType, event: Omit<types.tables.Event, "user_time" | "type" | "server_time" | "id" | "game_session_id">): void;
 }

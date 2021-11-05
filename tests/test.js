@@ -1,7 +1,7 @@
 require("dotenv/config");
 
 describe("cjs", () => {
-  const RedMetrics = require(".");
+  const RedMetrics = require("../dist/cjs");
 
   const client = new RedMetrics.Client({
     bufferingDelay: 1000,

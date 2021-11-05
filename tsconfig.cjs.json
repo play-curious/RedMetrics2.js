@@ -2,7 +2,7 @@
   "compilerOptions": {
     "rootDir": "src",
     "module": "CommonJS",
-    "lib": ["ES2020", "DOM", "ESNext", "dom"],
+    "lib": ["ES2020", "DOM", "ESNext"],
     "target": "ES2020",
     "forceConsistentCasingInFileNames": true,
     "downlevelIteration": true,

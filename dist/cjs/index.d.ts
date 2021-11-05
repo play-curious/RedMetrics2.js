@@ -1,1 +1,1 @@
-export * from "./app/Client";
+export * from "./app/client";
