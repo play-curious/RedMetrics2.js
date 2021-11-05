@@ -18,6 +18,11 @@ export interface ClientConfig {
   bufferingDelay?: number;
 }
 
+export type EmittedEvent = Omit<
+  types.tables.Event,
+  "user_time" | "type" | "server_time" | "id" | "session_id"
+>;
+
 // todo start game session if gamesessionid not exists
 
 export class Client {
@@ -85,10 +90,12 @@ export class Client {
     );
   }
 
-  public async disconnect(): Promise<void> {
+  public async disconnect(emitted?: EmittedEvent): Promise<void> {
     if (!this.connected) throw new Error("RedMetrics client is not connected");
 
     clearInterval(this.bufferingInterval);
+
+    this.emit("end", { ...emitted });
 
     await this.buff();
 
@@ -118,13 +125,7 @@ export class Client {
       });
   }
 
-  public emit(
-    type: types.EventType,
-    event: Omit<
-      types.tables.Event,
-      "user_time" | "type" | "server_time" | "id" | "game_session_id"
-    >
-  ) {
+  public emit(type: types.EventType, event: EmittedEvent) {
     this.eventQueue.push({
       ...event,
       type,
