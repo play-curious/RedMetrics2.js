@@ -26,29 +26,32 @@ export class Client {
         const route = `/key`;
         const { data: apiKey } = await this.api.get(route);
         if (!apiKey) {
-            const session = {
-                version: this.config.gameSession.gameVersion,
-                screen_size: this.config.gameSession.screenSize,
-                software: this.config.gameSession.software,
-                external_id: this.config.gameSession.externalId,
-                platform: this.config.gameSession.platform,
-                custom_data: this.config.gameSession.customData === undefined
-                    ? undefined
-                    : JSON.stringify(this.config.gameSession.customData),
-            };
+            const session = this.config.session
+                ? {
+                    version: this.config.session.gameVersion,
+                    screen_size: this.config.session.screenSize,
+                    software: this.config.session.software,
+                    external_id: this.config.session.externalId,
+                    platform: this.config.session.platform,
+                    custom_data: this.config.session.customData === undefined
+                        ? undefined
+                        : JSON.stringify(this.config.session.customData),
+                }
+                : {};
             const { data } = await this.api.post(`/v2/session`, session);
-            this.gameSessionId = data;
+            this.sessionId = data;
         }
         else {
-            this.gameSessionId = apiKey.key;
+            this.sessionId = apiKey.key;
         }
         this.connected = true;
         this.bufferingInterval = setInterval(this.buff.bind(this), this.config.bufferingDelay ?? 60000);
     }
-    async disconnect() {
+    async disconnect(emitted) {
         if (!this.connected)
             throw new Error("RedMetrics client is not connected");
         clearInterval(this.bufferingInterval);
+        this.emit("end", { ...emitted });
         await this.buff();
         this.bufferingInterval = null;
         this.connected = false;
@@ -60,10 +63,10 @@ export class Client {
             return Promise.resolve();
     }
     async sendEvent(event) {
-        if (!this.gameSessionId)
+        if (!this.sessionId)
             throw new Error("The game session is not created: internal error...");
         await this.api
-            .post("/v2/event", { ...event, game_session_id: this.gameSessionId })
+            .post("/v2/event", { ...event, game_session_id: this.sessionId })
             .then(() => {
             console.info(`emitted event: [${event.type}]`);
             this.eventQueue.splice(this.eventQueue.indexOf(event), 1);

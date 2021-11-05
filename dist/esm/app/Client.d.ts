@@ -1,7 +1,7 @@
 import * as axios from "axios";
 import * as types from "rm2-typings";
-export interface GameSessionConfig {
-    gameId: string;
+export interface SessionInfo {
+    gameId?: string;
     gameVersion?: string;
     customData?: object;
     externalId?: string;
@@ -12,21 +12,22 @@ export interface GameSessionConfig {
 export interface ClientConfig {
     apiKey: string;
     baseUrl: string;
-    gameSession: GameSessionConfig;
+    session?: SessionInfo;
     bufferingDelay?: number;
 }
+export declare type EmittedEvent = Omit<types.tables.Event, "user_time" | "type" | "server_time" | "id" | "session_id">;
 export declare class Client {
     readonly config: ClientConfig;
     protected eventQueue: Omit<types.tables.Event, "server_time" | "session_id" | "id">[];
     protected bufferingInterval: any;
-    protected gameSessionId?: string;
+    protected sessionId?: string;
     protected connected: boolean;
     protected api: axios.AxiosInstance;
     constructor(config: ClientConfig);
     get isConnected(): boolean;
     connect(): Promise<void>;
-    disconnect(): Promise<void>;
+    disconnect(emitted?: EmittedEvent): Promise<void>;
     private buff;
     private sendEvent;
-    emit(type: types.EventType, event: Omit<types.tables.Event, "user_time" | "type" | "server_time" | "id" | "game_session_id">): void;
+    emit(type: types.EventType, event: EmittedEvent): void;
 }

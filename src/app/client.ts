@@ -1,8 +1,8 @@
 import * as axios from "axios";
 import * as types from "rm2-typings";
 
-export interface GameSessionConfig {
-  gameId: string;
+export interface SessionInfo {
+  gameId?: string;
   gameVersion?: string;
   customData?: object;
   externalId?: string;
@@ -14,7 +14,7 @@ export interface GameSessionConfig {
 export interface ClientConfig {
   apiKey: string;
   baseUrl: string;
-  gameSession: GameSessionConfig;
+  session?: SessionInfo;
   bufferingDelay?: number;
 }
 
@@ -31,7 +31,7 @@ export class Client {
     "server_time" | "session_id" | "id"
   >[] = [];
   protected bufferingInterval: any = null;
-  protected gameSessionId?: string;
+  protected sessionId?: string;
   protected connected = false;
   protected api: axios.AxiosInstance;
 
@@ -63,23 +63,25 @@ export class Client {
     >(route);
 
     if (!apiKey) {
-      const session: types.api.Session["Post"]["Body"] = {
-        version: this.config.gameSession.gameVersion,
-        screen_size: this.config.gameSession.screenSize,
-        software: this.config.gameSession.software,
-        external_id: this.config.gameSession.externalId,
-        platform: this.config.gameSession.platform,
-        custom_data:
-          this.config.gameSession.customData === undefined
-            ? undefined
-            : JSON.stringify(this.config.gameSession.customData),
-      };
+      const session: types.api.Session["Post"]["Body"] = this.config.session
+        ? {
+            version: this.config.session.gameVersion,
+            screen_size: this.config.session.screenSize,
+            software: this.config.session.software,
+            external_id: this.config.session.externalId,
+            platform: this.config.session.platform,
+            custom_data:
+              this.config.session.customData === undefined
+                ? undefined
+                : JSON.stringify(this.config.session.customData),
+          }
+        : {};
 
       const { data } = await this.api.post(`/v2/session`, session);
 
-      this.gameSessionId = data;
+      this.sessionId = data;
     } else {
-      this.gameSessionId = apiKey.key;
+      this.sessionId = apiKey.key;
     }
 
     this.connected = true;
@@ -114,11 +116,11 @@ export class Client {
   private async sendEvent(
     event: Omit<types.tables.Event, "server_time" | "id" | "session_id">
   ) {
-    if (!this.gameSessionId)
+    if (!this.sessionId)
       throw new Error("The game session is not created: internal error...");
 
     await this.api
-      .post("/v2/event", { ...event, game_session_id: this.gameSessionId })
+      .post("/v2/event", { ...event, game_session_id: this.sessionId })
       .then(() => {
         console.info(`emitted event: [${event.type}]`);
         this.eventQueue.splice(this.eventQueue.indexOf(event), 1);

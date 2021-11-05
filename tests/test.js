@@ -5,11 +5,8 @@ describe("cjs", () => {
 
   const client = new RedMetrics.Client({
     bufferingDelay: 1000,
+    baseUrl: process.env.API_BASE_URL,
     apiKey: process.env.API_KEY,
-    apiConfig: RedMetrics.defaultDevConfig,
-    gameSession: {
-      gameVersionId: "7fe48815-5d14-4e35-9c49-adc5d782c9ae",
-    },
   });
 
   beforeAll((cb) => {
