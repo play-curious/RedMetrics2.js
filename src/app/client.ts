@@ -39,6 +39,7 @@ export class Client {
     this.api = axios.default.create({
       params: { apikey: config.apiKey },
       baseURL: config.baseUrl,
+      headers: { "Access-Control-Allow-Origin": config.baseUrl },
     });
 
     this.connect()
