@@ -107,25 +107,19 @@ export class Client {
   }
 
   private async buff(): Promise<void> {
-    if (this.connected && this.eventQueue.length > 0)
-      await Promise.all(
-        Array.from(this.eventQueue).map(this.sendEvent.bind(this))
+    if (this.connected && this.eventQueue.length > 0) {
+      const events: types.api.Event["Post"]["Body"] = this.eventQueue.map(
+        (event) => ({
+          ...event,
+          game_session_id: this.sessionId,
+        })
       );
-    else return Promise.resolve();
-  }
 
-  private async sendEvent(
-    event: Omit<types.tables.Event, "server_time" | "id" | "session_id">
-  ) {
-    if (!this.sessionId)
-      throw new Error("The game session is not created: internal error...");
-
-    await this.api
-      .post("/v2/event", { ...event, game_session_id: this.sessionId })
-      .then(() => {
-        console.info(`emitted event: [${event.type}]`);
-        this.eventQueue.splice(this.eventQueue.indexOf(event), 1);
-      });
+      await this.api
+        .post("/v2/event", events)
+        .then(() => (this.eventQueue = []));
+    } else if (!this.connected)
+      console.error("❌ redmetrics client not connected");
   }
 
   public emit(type: types.EventType, event: EmittedEvent) {
