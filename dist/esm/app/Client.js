@@ -9,6 +9,7 @@ export class Client {
         this.api = axios.default.create({
             params: { apikey: config.apiKey },
             baseURL: config.baseUrl,
+            headers: { "Access-Control-Allow-Origin": config.baseUrl },
         });
         this.connect()
             .then(() => console.log("✔ redmetrics client connected"))
@@ -38,7 +39,8 @@ export class Client {
                         : JSON.stringify(this.config.session.customData),
                 }
                 : {};
-            const { data } = await this.api.post(`/v2/session`, session);
+            const sessionRoute = `/session`;
+            const { data } = await this.api.post(sessionRoute, session);
             this.sessionId = data;
         }
         else {
@@ -57,20 +59,19 @@ export class Client {
         this.connected = false;
     }
     async buff() {
-        if (this.connected && this.eventQueue.length > 0)
-            await Promise.all(Array.from(this.eventQueue).map(this.sendEvent.bind(this)));
-        else
-            return Promise.resolve();
-    }
-    async sendEvent(event) {
-        if (!this.sessionId)
-            throw new Error("The game session is not created: internal error...");
-        await this.api
-            .post("/v2/event", { ...event, game_session_id: this.sessionId })
-            .then(() => {
-            console.info(`emitted event: [${event.type}]`);
-            this.eventQueue.splice(this.eventQueue.indexOf(event), 1);
-        });
+        if (this.connected && this.eventQueue.length > 0) {
+            const events = this.eventQueue.map((event) => ({
+                ...event,
+                session_id: this.sessionId,
+            }));
+            const eventRoute = "/event";
+            await this.api.post(eventRoute, events).then((res) => {
+                if (res.status == 200)
+                    this.eventQueue = [];
+            });
+        }
+        else if (!this.connected)
+            console.error("❌ redmetrics client not connected");
     }
     emit(type, event) {
         this.eventQueue.push({

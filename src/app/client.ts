@@ -113,7 +113,7 @@ export class Client {
       const events: types.api.Event["Post"]["Body"] = this.eventQueue.map(
         (event) => ({
           ...event,
-          session_id: this.sessionId,
+          session_id: this.sessionId as string,
         })
       );
 

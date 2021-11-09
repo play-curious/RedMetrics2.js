@@ -28,6 +28,5 @@ export declare class Client {
     connect(): Promise<void>;
     disconnect(emitted?: EmittedEvent): Promise<void>;
     private buff;
-    private sendEvent;
     emit(type: types.EventType, event: EmittedEvent): void;
 }
