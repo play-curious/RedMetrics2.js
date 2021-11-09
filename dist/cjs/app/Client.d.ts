@@ -27,6 +27,9 @@ export declare class Client {
     get isConnected(): boolean;
     connect(): Promise<void>;
     disconnect(emitted?: EmittedEvent): Promise<void>;
-    private buff;
+    /**
+     * If you want to send events manually
+     */
+    buff(): Promise<boolean>;
     emit(type: types.EventType, event: EmittedEvent): void;
 }

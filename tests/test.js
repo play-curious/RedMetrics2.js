@@ -1,23 +1,31 @@
-require("dotenv/config");
+const dotenv = require("dotenv");
+const path = require("path");
+
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 describe("cjs", () => {
   const RedMetrics = require("../dist/cjs");
 
   const client = new RedMetrics.Client({
-    bufferingDelay: 1000,
+    bufferingDelay: 100000,
     baseUrl: process.env.API_BASE_URL,
     apiKey: process.env.API_KEY,
   });
 
-  beforeAll((cb) => {
-    setTimeout(() => cb(), 2000);
+  test("connexion", (cb) => {
+    client
+      .connect()
+      .then(() => {
+        cb();
+      })
+      .catch(cb);
   });
 
   test("is connected", () => {
     expect(client.isConnected).toBeTruthy();
   });
 
-  test("send events", () => {
+  test("send events", async () => {
     client.emit("start", {
       custom_data: {
         content: "Hello World!",
@@ -29,6 +37,10 @@ describe("cjs", () => {
         content: "Another event!",
       },
     });
+
+    const buffed = await client.buff();
+
+    expect(buffed).toBeTruthy();
   });
 
   afterAll((cb) => {

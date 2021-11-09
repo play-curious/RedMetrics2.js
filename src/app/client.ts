@@ -41,13 +41,6 @@ export class Client {
       baseURL: config.baseUrl,
       headers: { "Access-Control-Allow-Origin": config.baseUrl },
     });
-
-    this.connect()
-      .then(() => console.log("✔ redmetrics client connected"))
-      .catch((error) => {
-        console.error("❌ redmetrics client not connected");
-        console.error(error);
-      });
   }
 
   get isConnected(): boolean {
@@ -108,7 +101,10 @@ export class Client {
     this.connected = false;
   }
 
-  private async buff(): Promise<void> {
+  /**
+   * If you want to send events manually
+   */
+  async buff(): Promise<boolean> {
     if (this.connected && this.eventQueue.length > 0) {
       const events: types.api.Event["Post"]["Body"] = this.eventQueue.map(
         (event) => ({
@@ -122,8 +118,12 @@ export class Client {
       await this.api.post(eventRoute, events).then((res) => {
         if (res.status == 200) this.eventQueue = [];
       });
+
+      return true;
     } else if (!this.connected)
       console.error("❌ redmetrics client not connected");
+
+    return false;
   }
 
   public emit(type: types.EventType, event: EmittedEvent) {

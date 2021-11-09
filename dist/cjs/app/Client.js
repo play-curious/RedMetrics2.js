@@ -33,12 +33,6 @@ class Client {
             baseURL: config.baseUrl,
             headers: { "Access-Control-Allow-Origin": config.baseUrl },
         });
-        this.connect()
-            .then(() => console.log("✔ redmetrics client connected"))
-            .catch((error) => {
-            console.error("❌ redmetrics client not connected");
-            console.error(error);
-        });
     }
     get isConnected() {
         return this.connected;
@@ -80,6 +74,9 @@ class Client {
         this.bufferingInterval = null;
         this.connected = false;
     }
+    /**
+     * If you want to send events manually
+     */
     async buff() {
         if (this.connected && this.eventQueue.length > 0) {
             const events = this.eventQueue.map((event) => ({
@@ -91,9 +88,11 @@ class Client {
                 if (res.status == 200)
                     this.eventQueue = [];
             });
+            return true;
         }
         else if (!this.connected)
             console.error("❌ redmetrics client not connected");
+        return false;
     }
     emit(type, event) {
         this.eventQueue.push({
