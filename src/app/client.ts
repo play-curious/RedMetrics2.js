@@ -78,7 +78,9 @@ export class Client {
           }
         : {};
 
-      const { data } = await this.api.post(`/v2/session`, session);
+      const sessionRoute: types.api.Session["Route"] = `/session`;
+
+      const { data } = await this.api.post(sessionRoute, session);
 
       this.sessionId = data;
     } else {
@@ -111,13 +113,15 @@ export class Client {
       const events: types.api.Event["Post"]["Body"] = this.eventQueue.map(
         (event) => ({
           ...event,
-          game_session_id: this.sessionId,
+          session_id: this.sessionId,
         })
       );
 
-      await this.api
-        .post("/v2/event", events)
-        .then(() => (this.eventQueue = []));
+      const eventRoute: types.api.Event["Route"] = "/event";
+
+      await this.api.post(eventRoute, events).then((res) => {
+        if (res.status == 200) this.eventQueue = [];
+      });
     } else if (!this.connected)
       console.error("❌ redmetrics client not connected");
   }
