@@ -15,9 +15,7 @@ describe("cjs", () => {
   test("connexion", (cb) => {
     client
       .connect()
-      .then(() => {
-        cb();
-      })
+      .then(() => cb())
       .catch(cb);
   });
 

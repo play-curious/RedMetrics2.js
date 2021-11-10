@@ -73,12 +73,12 @@ export class Client {
 
       const sessionRoute: types.api.Session["Route"] = `/session`;
 
-      const { data } = await this.api.post(sessionRoute, session);
+      const { data } = await this.api.post<
+        types.api.Session["Post"]["Response"]
+      >(sessionRoute, session);
 
-      this.sessionId = data;
-    } else {
-      this.sessionId = apiKey.key;
-    }
+      this.sessionId = data.id;
+    } else this.sessionId = apiKey.key;
 
     this.connected = true;
 

@@ -57,11 +57,10 @@ class Client {
                 : {};
             const sessionRoute = `/session`;
             const { data } = await this.api.post(sessionRoute, session);
-            this.sessionId = data;
+            this.sessionId = data.id;
         }
-        else {
+        else
             this.sessionId = apiKey.key;
-        }
         this.connected = true;
         this.bufferingInterval = setInterval(this.buff.bind(this), this.config.bufferingDelay ?? 60000);
     }
