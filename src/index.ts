@@ -1,20 +1,9 @@
-import * as axios from "axios";
 import * as types from "rm2-typings";
-
-export interface SessionInfo {
-  gameId?: string;
-  gameVersion?: string;
-  customData?: object;
-  externalId?: string;
-  platform?: string;
-  screenSize?: string;
-  software?: string;
-}
 
 export interface ClientConfig {
   apiKey: string;
   baseUrl: string;
-  session?: SessionInfo;
+  session?: types.tables.Session;
   bufferingDelay?: number;
 }
 
@@ -25,7 +14,7 @@ export type EmittedEvent = Omit<
 
 // todo start game session if gamesessionid not exists
 
-export class Client {
+export default class Client {
   protected eventQueue: Omit<
     types.tables.Event,
     "server_time" | "session_id" | "id"
@@ -33,10 +22,10 @@ export class Client {
   protected bufferingInterval: any = null;
   protected sessionId?: string;
   protected connected = false;
-  protected api: axios.AxiosInstance;
+  protected api = types.utils.request;
 
   constructor(public readonly config: ClientConfig) {
-    this.api = axios.default.create({
+    types.utils.setupConfig({
       params: { apikey: config.apiKey },
       baseURL: config.baseUrl,
       headers: { "Access-Control-Allow-Origin": config.baseUrl },
@@ -48,37 +37,36 @@ export class Client {
   }
 
   public async connect(): Promise<void> {
+    console.log("connexion...");
+
     if (this.connected)
       throw new Error("RedMetrics client is already connected");
 
-    const route: types.api.Key["Route"] = `/key`;
-    const { data: apiKey } = await this.api.get<
-      types.api.Key["Get"]["Response"]
-    >(route);
+    const apiKey = await this.api<types.api.Key>("Get", "/key", undefined);
 
-    if (!apiKey) {
-      const session: types.api.Session["Post"]["Body"] = this.config.session
-        ? {
-            version: this.config.session.gameVersion,
-            screen_size: this.config.session.screenSize,
-            software: this.config.session.software,
-            external_id: this.config.session.externalId,
-            platform: this.config.session.platform,
-            custom_data:
-              this.config.session.customData === undefined
-                ? undefined
-                : JSON.stringify(this.config.session.customData),
-          }
-        : {};
+    if (!apiKey) throw new Error("Invalid API key !");
 
-      const sessionRoute: types.api.Session["Route"] = `/session`;
+    this.sessionId = apiKey.key;
 
-      const { data } = await this.api.post<
-        types.api.Session["Post"]["Response"]
-      >(sessionRoute, session);
+    console.log("connected with " + apiKey.game_id + " game id");
+
+    const sessions = await this.api<types.api.SessionsByGameId>(
+      "Get",
+      `/sessions/${apiKey.game_id}`,
+      ""
+    );
+
+    if (sessions.length === 0) {
+      const data = await this.api<types.api.Session>(
+        "Post",
+        "/session",
+        this.config.session ? this.config.session : {}
+      );
 
       this.sessionId = data.id;
-    } else this.sessionId = apiKey.key;
+    } else {
+      this.sessionId = sessions[0].id;
+    }
 
     this.connected = true;
 
@@ -106,16 +94,14 @@ export class Client {
    */
   async buff(): Promise<boolean> {
     if (this.connected && this.eventQueue.length > 0) {
-      const events: types.api.Event["Post"]["Body"] = this.eventQueue.map(
-        (event) => ({
+      await this.api<types.api.Event>(
+        "Post",
+        "/event",
+        this.eventQueue.map((event) => ({
           ...event,
           session_id: this.sessionId as string,
-        })
-      );
-
-      const eventRoute: types.api.Event["Route"] = "/event";
-
-      await this.api.post(eventRoute, events).then((res) => {
+        }))
+      ).then((res) => {
         if (res.status == 200) this.eventQueue = [];
       });
 
@@ -135,4 +121,4 @@ export class Client {
   }
 }
 
-module.exports.Client = Client;
+module.exports = Client;

@@ -19,8 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Client = void 0;
-const axios = __importStar(require("axios"));
+const types = __importStar(require("rm2-typings"));
 // todo start game session if gamesessionid not exists
 class Client {
     constructor(config) {
@@ -28,7 +27,8 @@ class Client {
         this.eventQueue = [];
         this.bufferingInterval = null;
         this.connected = false;
-        this.api = axios.default.create({
+        this.api = types.utils.request;
+        types.utils.setupConfig({
             params: { apikey: config.apiKey },
             baseURL: config.baseUrl,
             headers: { "Access-Control-Allow-Origin": config.baseUrl },
@@ -38,29 +38,22 @@ class Client {
         return this.connected;
     }
     async connect() {
+        console.log("connexion...");
         if (this.connected)
             throw new Error("RedMetrics client is already connected");
-        const route = `/key`;
-        const { data: apiKey } = await this.api.get(route);
-        if (!apiKey) {
-            const session = this.config.session
-                ? {
-                    version: this.config.session.gameVersion,
-                    screen_size: this.config.session.screenSize,
-                    software: this.config.session.software,
-                    external_id: this.config.session.externalId,
-                    platform: this.config.session.platform,
-                    custom_data: this.config.session.customData === undefined
-                        ? undefined
-                        : JSON.stringify(this.config.session.customData),
-                }
-                : {};
-            const sessionRoute = `/session`;
-            const { data } = await this.api.post(sessionRoute, session);
+        const apiKey = await this.api("Get", "/key", undefined);
+        if (!apiKey)
+            throw new Error("Invalid API key !");
+        this.sessionId = apiKey.key;
+        console.log("connected with " + apiKey.game_id + " game id");
+        const sessions = await this.api("Get", `/sessions/${apiKey.game_id}`, "");
+        if (sessions.length === 0) {
+            const data = await this.api("Post", "/session", this.config.session ? this.config.session : {});
             this.sessionId = data.id;
         }
-        else
-            this.sessionId = apiKey.key;
+        else {
+            this.sessionId = sessions[0].id;
+        }
         this.connected = true;
         this.bufferingInterval = setInterval(this.buff.bind(this), this.config.bufferingDelay ?? 60000);
     }
@@ -78,12 +71,10 @@ class Client {
      */
     async buff() {
         if (this.connected && this.eventQueue.length > 0) {
-            const events = this.eventQueue.map((event) => ({
+            await this.api("Post", "/event", this.eventQueue.map((event) => ({
                 ...event,
                 session_id: this.sessionId,
-            }));
-            const eventRoute = "/event";
-            await this.api.post(eventRoute, events).then((res) => {
+            }))).then((res) => {
                 if (res.status == 200)
                     this.eventQueue = [];
             });
@@ -101,5 +92,5 @@ class Client {
         });
     }
 }
-exports.Client = Client;
-module.exports.Client = Client;
+exports.default = Client;
+module.exports = Client;
