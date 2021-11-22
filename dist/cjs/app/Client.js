@@ -102,3 +102,4 @@ class Client {
     }
 }
 exports.Client = Client;
+module.exports = Client;

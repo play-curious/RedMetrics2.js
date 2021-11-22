@@ -79,3 +79,4 @@ export class Client {
         });
     }
 }
+module.exports = Client;
