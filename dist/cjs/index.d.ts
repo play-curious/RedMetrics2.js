@@ -16,7 +16,7 @@ export interface ClientConfig {
     bufferingDelay?: number;
 }
 export declare type EmittedEvent = Omit<types.tables.Event, "user_time" | "type" | "server_time" | "id" | "session_id">;
-export default class Client {
+export declare class Client {
     readonly config: ClientConfig;
     protected eventQueue: Omit<types.tables.Event, "server_time" | "session_id" | "id">[];
     protected bufferingInterval: any;

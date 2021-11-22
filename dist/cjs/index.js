@@ -19,6 +19,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.Client = void 0;
 const axios = __importStar(require("axios"));
 // todo start game session if gamesessionid not exists
 class Client {
@@ -100,5 +101,5 @@ class Client {
         });
     }
 }
-exports.default = Client;
-module.exports = Client;
+exports.Client = Client;
+module.exports.Client = Client;

@@ -1,6 +1,6 @@
 import * as axios from "axios";
 // todo start game session if gamesessionid not exists
-export default class Client {
+export class Client {
     constructor(config) {
         this.config = config;
         this.eventQueue = [];
@@ -79,4 +79,4 @@ export default class Client {
         });
     }
 }
-module.exports = Client;
+module.exports.Client = Client;
