@@ -1,6 +1,6 @@
 .idea
 .vscode
 node_modules
-.env
+tests/.env
 yarn-error.log
 dist/

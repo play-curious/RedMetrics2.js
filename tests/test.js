@@ -1,30 +1,31 @@
-require("dotenv/config");
+const dotenv = require("dotenv");
+const path = require("path");
+
+dotenv.config({ path: path.join(__dirname, ".env") });
 
 describe("cjs", () => {
-  const RedMetrics = require(".");
+  const RedMetrics = require("../dist/cjs");
 
   console.log("found game ID", process.env.GAME_ID);
 
   const client = new RedMetrics.Client({
-    bufferingDelay: 1000,
-    apiKey: process.env.API_KEY,
-    gameId: process.env.GAME_ID,
-    apiConfig: {
-      protocol: process.env.PROTOCOL,
-      host: process.env.HOST,
-      port: process.env.PORT,
-    },
+    bufferingDelay: 100000,
+    baseUrl: process.env.API_BASE_URL,
+    apiKey: process.env.API_KEY
   });
 
-  test("wait 2s", (cb) => {
-    setTimeout(() => cb(), 2000);
+  test("connexion", (cb) => {
+    client
+      .connect()
+      .then(() => cb())
+      .catch(cb);
   });
 
   test("is connected", () => {
     expect(client.isConnected).toBeTruthy();
   });
 
-  test("send events", () => {
+  test("send events", async () => {
     client.emit("start", {
       custom_data: {
         content: "Hello World!",
@@ -36,9 +37,13 @@ describe("cjs", () => {
         content: "Another event!",
       },
     });
+
+    const buffed = await client.buff();
+
+    expect(buffed).toBeTruthy();
   });
 
-  test("disconnect", (cb) => {
+  afterAll((cb) => {
     client
       .disconnect()
       .then(() => cb())
