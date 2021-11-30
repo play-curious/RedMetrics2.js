@@ -50,10 +50,10 @@ export default class Client {
 
     console.log("connected with " + apiKey.game_id + " game id");
 
-    const sessions = await this.api<types.api.SessionsByGameId>(
+    const sessions = await this.api<types.api.GameById_Sessions>(
       "Get",
-      `/sessions/${apiKey.game_id}`,
-      ""
+      `/game/${apiKey.game_id}/sessions`,
+      undefined
     );
 
     if (sessions.length === 0) {

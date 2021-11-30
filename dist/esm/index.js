@@ -25,7 +25,7 @@ export default class Client {
             throw new Error("Invalid API key !");
         this.sessionId = apiKey.key;
         console.log("connected with " + apiKey.game_id + " game id");
-        const sessions = await this.api("Get", `/sessions/${apiKey.game_id}`, "");
+        const sessions = await this.api("Get", `/game/${apiKey.game_id}/sessions`, undefined);
         if (sessions.length === 0) {
             const data = await this.api("Post", "/session", this.config.session ? this.config.session : {});
             this.sessionId = data.id;

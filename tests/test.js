@@ -4,14 +4,12 @@ const path = require("path");
 dotenv.config({ path: path.join(__dirname, ".env") });
 
 describe("cjs", () => {
-  const RedMetrics = require("../dist/cjs");
+  const RedMetrics = require("../dist/cjs/index.js");
 
-  console.log("found game ID", process.env.GAME_ID);
-
-  const client = new RedMetrics.Client({
+  const client = new RedMetrics({
     bufferingDelay: 100000,
     baseUrl: process.env.API_BASE_URL,
-    apiKey: process.env.API_KEY
+    apiKey: process.env.API_KEY,
   });
 
   test("connexion", (cb) => {
