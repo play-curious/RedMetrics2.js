@@ -56,17 +56,14 @@ export default class Client {
       undefined
     );
 
-    if (sessions.length === 0) {
-      const data = await this.api<types.api.Session>(
-        "Post",
-        "/session",
-        this.config.session ? this.config.session : {}
-      );
+    const data = await this.api<types.api.Session>(
+      "Post",
+      "/session",
+      this.config.session ? this.config.session : {}
+    );
 
-      this.sessionId = data.id;
-    } else {
-      this.sessionId = sessions[0].id;
-    }
+    this.sessionId = data.id;
+    console.log("created session", this.sessionId);
 
     this.connected = true;
 
@@ -94,16 +91,18 @@ export default class Client {
    */
   async buff(): Promise<boolean> {
     if (this.connected && this.eventQueue.length > 0) {
-      await this.api<types.api.Event>(
-        "Post",
-        "/event",
-        this.eventQueue.map((event) => ({
-          ...event,
-          session_id: this.sessionId as string,
-        }))
-      ).then((res) => {
-        if (res.status == 200) this.eventQueue = [];
-      });
+      const eventData = this.eventQueue.map((event) => ({
+        ...event,
+        session_id: this.sessionId as string,
+      }));
+
+      console.log("sending events", eventData);
+
+      await this.api<types.api.Event>("Post", "/event", eventData).then(
+        (res) => {
+          if (res.status == 200) this.eventQueue = [];
+        }
+      );
 
       return true;
     } else if (!this.connected)

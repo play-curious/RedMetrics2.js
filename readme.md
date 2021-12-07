@@ -2,14 +2,14 @@
 
 ## Development
 
-Install dependencies with `yarn` or `npm install`.
+Install dependencies with `npm install`.
 
 ### Tests
 
-Copy `.env.template` to `.env` and fill in the environmental variables such as `API_KEY`.
+Copy `template.env` to `tests/.env` and fill in the environmental variables such as `API_KEY`.
 
-Run tests with `yarn test` or `npm run test`.
+Run tests with `npm run test`.
 
 ### Building
 
-Build for multiple formats with `yarn bundle` or `yarn watch`.
+Build for multiple formats with `npm run bundle` or `npm run watch`.

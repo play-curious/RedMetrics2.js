@@ -47,13 +47,9 @@ class Client {
         this.sessionId = apiKey.key;
         console.log("connected with " + apiKey.game_id + " game id");
         const sessions = await this.api("Get", `/game/${apiKey.game_id}/sessions`, undefined);
-        if (sessions.length === 0) {
-            const data = await this.api("Post", "/session", this.config.session ? this.config.session : {});
-            this.sessionId = data.id;
-        }
-        else {
-            this.sessionId = sessions[0].id;
-        }
+        const data = await this.api("Post", "/session", this.config.session ? this.config.session : {});
+        this.sessionId = data.id;
+        console.log("created session", this.sessionId);
         this.connected = true;
         this.bufferingInterval = setInterval(this.buff.bind(this), this.config.bufferingDelay ?? 60000);
     }
@@ -71,10 +67,12 @@ class Client {
      */
     async buff() {
         if (this.connected && this.eventQueue.length > 0) {
-            await this.api("Post", "/event", this.eventQueue.map((event) => ({
+            const eventData = this.eventQueue.map((event) => ({
                 ...event,
                 session_id: this.sessionId,
-            }))).then((res) => {
+            }));
+            console.log("sending events", eventData);
+            await this.api("Post", "/event", eventData).then((res) => {
                 if (res.status == 200)
                     this.eventQueue = [];
             });

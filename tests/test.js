@@ -3,6 +3,10 @@ const path = require("path");
 
 dotenv.config({ path: path.join(__dirname, ".env") });
 
+if (!process.env.API_BASE_URL || !process.env.API_KEY) {
+  throw new Error("Cannot find API_BASE_URL or API_KEY");
+}
+
 describe("cjs", () => {
   const RedMetrics = require("../dist/cjs/index.js");
 
