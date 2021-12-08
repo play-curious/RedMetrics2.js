@@ -98,11 +98,9 @@ export default class Client {
 
       console.log("sending events", eventData);
 
-      await this.api<types.api.Event>("Post", "/event", eventData).then(
-        (res) => {
-          if (res.status == 200) this.eventQueue = [];
-        }
-      );
+      await this.api<types.api.Event>("Post", "/event", eventData).then(() => {
+        this.eventQueue = [];
+      });
 
       return true;
     } else if (!this.connected)

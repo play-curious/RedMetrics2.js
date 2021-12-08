@@ -51,9 +51,8 @@ export default class Client {
                 session_id: this.sessionId,
             }));
             console.log("sending events", eventData);
-            await this.api("Post", "/event", eventData).then((res) => {
-                if (res.status == 200)
-                    this.eventQueue = [];
+            await this.api("Post", "/event", eventData).then(() => {
+                this.eventQueue = [];
             });
             return true;
         }

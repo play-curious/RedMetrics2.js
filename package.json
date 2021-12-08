@@ -13,7 +13,7 @@
     "iife": "gulp iife",
     "cjs": "gulp cjs",
     "esm": "gulp esm",
-    "test": "jest tests",
+    "test": "npm run cjs && jest tests",
     "types": "npm up rm2-typings -f"
   },
   "devDependencies": {
