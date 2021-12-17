@@ -117,5 +117,3 @@ export default class Client {
     });
   }
 }
-
-module.exports = Client;
