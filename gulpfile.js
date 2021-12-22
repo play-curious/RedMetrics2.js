@@ -23,7 +23,7 @@ function buildIife(bundle = false, minify = false) {
             minify,
             bundle,
             target: ["es2020", "chrome58", "firefox57", "safari11"],
-            globalName: "RedMetrics",
+            globalName: "rm2",
             loader: {
               ".ts": "ts",
               ".json": "json",
