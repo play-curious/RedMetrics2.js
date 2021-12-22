@@ -3,119 +3,150 @@ import * as types from "rm2-typings";
 export interface ClientConfig {
   apiKey: string;
   baseUrl: string;
-  session?: types.tables.Session;
+  session?: Partial<types.tables.Session>;
   bufferingDelay?: number;
 }
 
 export type EmittedEvent = Omit<
   types.tables.Event,
-  "user_time" | "type" | "server_time" | "id" | "session_id"
+  "server_time" | "id" | "session_id"
 >;
 
-// todo start game session if gamesessionid not exists
-
-export default class Client {
-  protected eventQueue: Omit<
+export class WriteConnection {
+  private _config: ClientConfig;
+  private _eventQueue: Omit<
     types.tables.Event,
     "server_time" | "session_id" | "id"
   >[] = [];
-  protected bufferingInterval: any = null;
-  protected sessionId?: string;
-  protected connected = false;
-  protected api = types.utils.request;
+  private _bufferingInterval: any = null;
+  private _connected = false;
+  private _api = types.utils.request;
+  private _sessionId?: types.Id;
 
-  constructor(public readonly config: ClientConfig) {
+  constructor(_config: ClientConfig) {
+    this._config = _config;
     types.utils.setupConfig({
-      params: { apikey: config.apiKey },
-      baseURL: config.baseUrl,
-      headers: { "Access-Control-Allow-Origin": config.baseUrl },
+      params: { apikey: _config.apiKey },
+      baseURL: _config.baseUrl,
     });
   }
 
   get isConnected(): boolean {
-    return this.connected;
+    return this._connected;
   }
 
-  public async connect(): Promise<void> {
-    console.log("connexion...");
+  get sessionId(): types.Id | undefined {
+    return this._sessionId;
+  }
 
-    if (this.connected)
-      throw new Error("RedMetrics client is already connected");
+  async connect(): Promise<void> {
+    console.log("RM2: WriteConnection connecting...");
 
-    const apiKey = await this.api<types.api.Key>("Get", "/key", undefined);
+    if (this._connected) {
+      console.warn("RM2: WriteConnection is already connected");
+      return;
+    }
+
+    const apiKey = await this._api<types.api.Key>("Get", "/key", undefined);
 
     if (!apiKey) throw new Error("Invalid API key !");
 
-    this.sessionId = apiKey.key;
+    console.log("RM2: WriteConnection connected");
 
-    console.log("connected with " + apiKey.game_id + " game id");
-
-    const sessions = await this.api<types.api.GameById_Sessions>(
-      "Get",
-      `/game/${apiKey.game_id}/sessions`,
-      undefined
-    );
-
-    const data = await this.api<types.api.Session>(
+    const data = await this._api<types.api.Session>(
       "Post",
       "/session",
-      this.config.session ? this.config.session : {}
+      this._config.session ? this._config.session : {}
     );
 
-    this.sessionId = data.id;
-    console.log("created session", this.sessionId);
+    this._sessionId = data.id;
+    console.log("created session", this._sessionId);
 
-    this.connected = true;
+    this._connected = true;
 
-    this.bufferingInterval = setInterval(
-      this.buff.bind(this),
-      this.config.bufferingDelay ?? 60000
+    this._bufferingInterval = setInterval(
+      this.sendData.bind(this),
+      this._config.bufferingDelay ?? 1000
     );
   }
 
-  public async disconnect(emitted?: EmittedEvent): Promise<void> {
-    if (!this.connected) throw new Error("RedMetrics client is not connected");
+  async disconnect(emitted?: EmittedEvent): Promise<void> {
+    if (!this._connected) {
+      console.warn("RM2: WriteConnection already disconnected");
+      return;
+    }
 
-    clearInterval(this.bufferingInterval);
+    clearInterval(this._bufferingInterval);
 
-    this.emit("end", { ...emitted });
+    this.postEvent("end", { ...emitted });
 
-    await this.buff();
+    await this.sendData();
 
-    this.bufferingInterval = null;
-    this.connected = false;
+    this._bufferingInterval = null;
+    this._connected = false;
   }
 
   /**
-   * If you want to send events manually
+   * Sends the current buffer of events, and return the number of events sent
    */
-  async buff(): Promise<boolean> {
-    if (this.connected && this.eventQueue.length > 0) {
-      const eventData = this.eventQueue.map((event) => ({
-        ...event,
-        session_id: this.sessionId as string,
-      }));
+  async sendData(): Promise<number> {
+    if (!this._connected) {
+      throw new Error("RM2: ❌ WriteConnection client not connected");
+    }
 
-      console.log("sending events", eventData);
+    if (this._eventQueue.length === 0) {
+      return 0;
+    }
 
-      await this.api<types.api.Event>("Post", "/event", eventData).then(() => {
-        this.eventQueue = [];
-      });
+    const eventData = this._eventQueue.map((event) => ({
+      ...event,
+      session_id: this._sessionId as string,
+    }));
 
-      return true;
-    } else if (!this.connected)
-      console.error("❌ redmetrics client not connected");
+    console.log("RM2: WriteConnection sending events", eventData);
 
-    return false;
+    await this._api<types.api.Event>("Post", "/event", eventData).then(() => {
+      this._eventQueue = [];
+    });
+
+    return eventData.length;
   }
 
-  public emit(type: types.EventType, event: EmittedEvent) {
-    this.eventQueue.push({
-      ...event,
-      type,
-      user_time: new Date().toISOString(),
-    });
+  /**
+   * Add the given event to the buffer of events to be sent
+   */
+  postEvent(event: EmittedEvent): void;
+  postEvent(type: string, event: Omit<EmittedEvent, "type">): void;
+  postEvent(
+    typeOrEvent: EmittedEvent | string,
+    event?: Omit<EmittedEvent, "type">
+  ): void {
+    let eventToPost: EmittedEvent;
+    if (typeof typeOrEvent === "string") {
+      eventToPost = { type: typeOrEvent };
+    } else {
+      eventToPost = typeOrEvent;
+    }
+
+    if (!eventToPost.user_time)
+      eventToPost.user_time = new Date().toISOString();
+
+    this._eventQueue.push(eventToPost);
+  }
+
+  async updateSession(session: Partial<types.tables.Session>): Promise<void> {
+    this._config.session = session;
+
+    // If not connected, return immediately
+    if (!this._connected) return;
+
+    console.log("RM2: WriteConnection updating session", session);
+
+    // Otherwise, send update
+    await this._api<types.api.SessionById>(
+      "Put",
+      `/session/${this._sessionId}`,
+      session
+    );
   }
 }
-
-module.exports = Client;

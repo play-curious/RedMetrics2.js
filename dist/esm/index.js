@@ -1,71 +1,88 @@
 import * as types from "rm2-typings";
-// todo start game session if gamesessionid not exists
-export default class Client {
-    constructor(config) {
-        this.config = config;
-        this.eventQueue = [];
-        this.bufferingInterval = null;
-        this.connected = false;
-        this.api = types.utils.request;
+export class WriteConnection {
+    constructor(_config) {
+        this._eventQueue = [];
+        this._bufferingInterval = null;
+        this._connected = false;
+        this._api = types.utils.request;
+        this._config = _config;
         types.utils.setupConfig({
-            params: { apikey: config.apiKey },
-            baseURL: config.baseUrl,
-            headers: { "Access-Control-Allow-Origin": config.baseUrl },
+            params: { apikey: _config.apiKey },
+            baseURL: _config.baseUrl,
         });
     }
     get isConnected() {
-        return this.connected;
+        return this._connected;
+    }
+    get sessionId() {
+        return this._sessionId;
     }
     async connect() {
-        console.log("connexion...");
-        if (this.connected)
-            throw new Error("RedMetrics client is already connected");
-        const apiKey = await this.api("Get", "/key", undefined);
+        console.log("RM2: WriteConnection connecting...");
+        if (this._connected) {
+            console.warn("RM2: WriteConnection is already connected");
+            return;
+        }
+        const apiKey = await this._api("Get", "/key", undefined);
         if (!apiKey)
             throw new Error("Invalid API key !");
-        this.sessionId = apiKey.key;
-        console.log("connected with " + apiKey.game_id + " game id");
-        const sessions = await this.api("Get", `/game/${apiKey.game_id}/sessions`, undefined);
-        const data = await this.api("Post", "/session", this.config.session ? this.config.session : {});
-        this.sessionId = data.id;
-        console.log("created session", this.sessionId);
-        this.connected = true;
-        this.bufferingInterval = setInterval(this.buff.bind(this), this.config.bufferingDelay ?? 60000);
+        console.log("RM2: WriteConnection connected");
+        const data = await this._api("Post", "/session", this._config.session ? this._config.session : {});
+        this._sessionId = data.id;
+        console.log("created session", this._sessionId);
+        this._connected = true;
+        this._bufferingInterval = setInterval(this.sendData.bind(this), this._config.bufferingDelay ?? 1000);
     }
     async disconnect(emitted) {
-        if (!this.connected)
-            throw new Error("RedMetrics client is not connected");
-        clearInterval(this.bufferingInterval);
-        this.emit("end", { ...emitted });
-        await this.buff();
-        this.bufferingInterval = null;
-        this.connected = false;
+        if (!this._connected) {
+            console.warn("RM2: WriteConnection already disconnected");
+            return;
+        }
+        clearInterval(this._bufferingInterval);
+        this.postEvent("end", { ...emitted });
+        await this.sendData();
+        this._bufferingInterval = null;
+        this._connected = false;
     }
     /**
-     * If you want to send events manually
+     * Sends the current buffer of events, and return the number of events sent
      */
-    async buff() {
-        if (this.connected && this.eventQueue.length > 0) {
-            const eventData = this.eventQueue.map((event) => ({
-                ...event,
-                session_id: this.sessionId,
-            }));
-            console.log("sending events", eventData);
-            await this.api("Post", "/event", eventData).then(() => {
-                this.eventQueue = [];
-            });
-            return true;
+    async sendData() {
+        if (!this._connected) {
+            throw new Error("RM2: ❌ WriteConnection client not connected");
         }
-        else if (!this.connected)
-            console.error("❌ redmetrics client not connected");
-        return false;
-    }
-    emit(type, event) {
-        this.eventQueue.push({
+        if (this._eventQueue.length === 0) {
+            return 0;
+        }
+        const eventData = this._eventQueue.map((event) => ({
             ...event,
-            type,
-            user_time: new Date().toISOString(),
+            session_id: this._sessionId,
+        }));
+        console.log("RM2: WriteConnection sending events", eventData);
+        await this._api("Post", "/event", eventData).then(() => {
+            this._eventQueue = [];
         });
+        return eventData.length;
+    }
+    postEvent(typeOrEvent, event) {
+        let eventToPost;
+        if (typeof typeOrEvent === "string") {
+            eventToPost = { type: typeOrEvent };
+        }
+        else {
+            eventToPost = typeOrEvent;
+        }
+        if (!eventToPost.user_time)
+            eventToPost.user_time = new Date().toISOString();
+        this._eventQueue.push(eventToPost);
+    }
+    async updateSession(session) {
+        this._config.session = session;
+        // If not connected, return immediately
+        if (!this._connected)
+            return;
+        console.log("RM2: WriteConnection updating session", session);
+        // Otherwise, send update
+        await this._api("Put", `/session/${this._sessionId}`, session);
     }
 }
-module.exports = Client;

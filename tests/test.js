@@ -10,7 +10,7 @@ if (!process.env.API_BASE_URL || !process.env.API_KEY) {
 describe("cjs", () => {
   const RedMetrics = require("../dist/cjs/index.js");
 
-  const client = new RedMetrics({
+  const client = new RedMetrics.WriteConnection({
     bufferingDelay: 100000,
     baseUrl: process.env.API_BASE_URL,
     apiKey: process.env.API_KEY,
@@ -28,21 +28,22 @@ describe("cjs", () => {
   });
 
   test("send events", async () => {
-    client.emit("start", {
+    client.postEvent("start", {
       custom_data: {
         content: "Hello World!",
       },
     });
 
-    client.emit("end", {
+    client.postEvent({
+      type: "end",
       custom_data: {
         content: "Another event!",
       },
     });
 
-    const buffed = await client.buff();
+    const eventCount = await client.sendData();
 
-    expect(buffed).toBeTruthy();
+    expect(eventCount).toEqual(2);
   });
 
   afterAll((cb) => {
