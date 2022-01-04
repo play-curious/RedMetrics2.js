@@ -1,14 +1,14 @@
-const dotenv = require("dotenv");
-const path = require("path");
+import dotenv from "dotenv";
+import path from "path";
 
-dotenv.config({ path: path.join(__dirname, ".env") });
+describe("esm", async () => {
+  dotenv.config({ path: path.join(__dirname, ".env") });
 
-if (!process.env.API_BASE_URL || !process.env.API_KEY) {
-  throw new Error("Cannot find API_BASE_URL or API_KEY");
-}
+  if (!process.env.API_BASE_URL || !process.env.API_KEY) {
+    throw new Error("Cannot find API_BASE_URL or API_KEY");
+  }
 
-describe("cjs", () => {
-  const RedMetrics = require("../dist/cjs/index.js");
+  const RedMetrics = await import("../dist/esm/index.js");
 
   const client = new RedMetrics.WriteConnection({
     bufferingDelay: 100000,

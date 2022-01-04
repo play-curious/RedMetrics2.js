@@ -1,5 +1,4 @@
 const gulp = require("gulp");
-const tsc = require("gulp-typescript");
 const esbuild = require("gulp-esbuild");
 
 function buildIife(bundle = false, minify = false) {
@@ -38,14 +37,34 @@ function buildIife(bundle = false, minify = false) {
 function cjs() {
   return gulp
     .src("src/**/*.ts")
-    .pipe(tsc("tsconfig.cjs.json"))
+    .pipe(
+      esbuild({
+        tsconfig: "tsconfig.cjs.json",
+        sourcemap: "external",
+        format: "cjs",
+        loader: {
+          ".ts": "ts",
+          ".json": "json",
+        },
+      })
+    )
     .pipe(gulp.dest("dist/cjs"));
 }
 
 function esm() {
   return gulp
     .src("src/**/*.ts")
-    .pipe(tsc("tsconfig.esm.json"))
+    .pipe(
+      esbuild({
+        tsconfig: "tsconfig.esm.json",
+        sourcemap: "external",
+        format: "esm",
+        loader: {
+          ".ts": "ts",
+          ".json": "json",
+        },
+      })
+    )
     .pipe(gulp.dest("dist/esm"));
 }
 
@@ -53,15 +72,17 @@ function watch() {
   return gulp.watch("src/**/*.ts", bundle);
 }
 
-exports.iife = gulp.parallel(
+const iife = gulp.parallel(
   buildIife(false, false),
   buildIife(false, true),
   buildIife(true, false),
   buildIife(true, true)
 );
-const bundle = gulp.parallel(exports.iife, cjs, esm);
+
+const bundle = gulp.parallel(iife, cjs, esm);
 
 exports.bundle = bundle;
 exports.watch = gulp.series(bundle, watch);
 exports.cjs = cjs;
 exports.esm = esm;
+exports.iife = iife;
