@@ -13,7 +13,7 @@
     "iife": "gulp iife",
     "cjs": "gulp cjs",
     "esm": "gulp esm",
-    "test": "npm run bundle && jest",
+    "test": "npm run bundle && jest && jest tests/esm.test.mjs",
     "types": "npm up rm2-typings -f"
   },
   "devDependencies": {
@@ -34,7 +34,6 @@
     "rm2-typings": "git+https://github.com/play-curious/RedMetrics2-typing.git"
   },
   "jest": {
-    "rootDir": "tests",
-    "moduleFileExtensions": ["js", "mjs"]
+    "rootDir": "tests"
   }
 }
