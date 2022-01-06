@@ -12,7 +12,7 @@ describe("cjs", () => {
 
   const client = new RedMetrics.WriteConnection({
     bufferingDelay: 100000,
-    baseUrl: process.env.API_BASE_URL,
+    path: process.env.API_PATH,
     apiKey: process.env.API_KEY,
   });
 

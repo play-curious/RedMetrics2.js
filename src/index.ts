@@ -2,32 +2,33 @@ import * as types from "rm2-typings";
 
 export interface ClientConfig {
   apiKey: string;
-  baseUrl: string;
   session?: Partial<types.tables.Session>;
   bufferingDelay?: number;
+  protocol?: string;
+  host?: string;
+  port?: string;
+  /** The after-url path of targeted API (e.g: "/v2") */
+  path?: string;
 }
 
-export type EmittedEvent = Omit<
-  types.tables.Event,
-  "server_time" | "id" | "session_id"
+export type EmittedEvent = types.utils.SnakeToCamelCaseNested<
+  Omit<types.tables.Event, "server_timestamp" | "id" | "session_id">
 >;
 
 export class WriteConnection {
-  private _config: ClientConfig;
-  private _eventQueue: Omit<
-    types.tables.Event,
-    "server_time" | "session_id" | "id"
-  >[] = [];
+  private _eventQueue: EmittedEvent[] = [];
+  private _buffering = false;
   private _bufferingInterval: any = null;
   private _connected = false;
   private _api = types.utils.request;
-  private _sessionId?: types.Id;
+  private _sessionId?: types.tables.Session["id"];
 
-  constructor(_config: ClientConfig) {
-    this._config = _config;
+  constructor(private _config: ClientConfig) {
     types.utils.setupConfig({
       params: { apikey: _config.apiKey },
-      baseURL: _config.baseUrl,
+      baseURL: `${_config.protocol ?? "http"}://${
+        _config.host ?? "localhost"
+      }:${_config.port ?? 6627}${_config.path ?? "/"}`,
     });
   }
 
@@ -53,7 +54,7 @@ export class WriteConnection {
 
     console.log("RM2: WriteConnection connected");
 
-    const data = await this._api<types.api.Session>(
+    const { data } = await this._api<types.api.Session>(
       "Post",
       "/session",
       this._config.session ? this._config.session : {}
@@ -78,7 +79,7 @@ export class WriteConnection {
 
     clearInterval(this._bufferingInterval);
 
-    this.postEvent("end", { ...emitted });
+    this.postEvent({ ...emitted, type: "end" });
 
     await this.sendData();
 
@@ -90,13 +91,13 @@ export class WriteConnection {
    * Sends the current buffer of events, and return the number of events sent
    */
   async sendData(): Promise<number> {
+    if (this._buffering || this._eventQueue.length === 0) return 0;
+
     if (!this._connected) {
       throw new Error("RM2: ❌ WriteConnection client not connected");
     }
 
-    if (this._eventQueue.length === 0) {
-      return 0;
-    }
+    this._buffering = true;
 
     const eventData = this._eventQueue.map((event) => ({
       ...event,
@@ -105,9 +106,10 @@ export class WriteConnection {
 
     console.log("RM2: WriteConnection sending events", eventData);
 
-    await this._api<types.api.Event>("Post", "/event", eventData).then(() => {
-      this._eventQueue = [];
-    });
+    await this._api<types.api.Event>("Post", "/event", eventData);
+
+    this._buffering = false;
+    this._eventQueue = [];
 
     return eventData.length;
   }
@@ -115,23 +117,10 @@ export class WriteConnection {
   /**
    * Add the given event to the buffer of events to be sent
    */
-  postEvent(event: EmittedEvent): void;
-  postEvent(type: string, event: Omit<EmittedEvent, "type">): void;
-  postEvent(
-    typeOrEvent: EmittedEvent | string,
-    event?: Omit<EmittedEvent, "type">
-  ): void {
-    let eventToPost: EmittedEvent;
-    if (typeof typeOrEvent === "string") {
-      eventToPost = { type: typeOrEvent };
-    } else {
-      eventToPost = typeOrEvent;
-    }
+  postEvent(event: EmittedEvent): void {
+    if (!event.userTimestamp) event.userTimestamp = new Date().toISOString();
 
-    if (!eventToPost.user_time)
-      eventToPost.user_time = new Date().toISOString();
-
-    this._eventQueue.push(eventToPost);
+    this._eventQueue.push(event);
   }
 
   async updateSession(session: Partial<types.tables.Session>): Promise<void> {

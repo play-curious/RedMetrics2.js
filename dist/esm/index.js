@@ -1,14 +1,15 @@
 import * as types from "rm2-typings";
 class WriteConnection {
   constructor(_config) {
+    this._config = _config;
     this._eventQueue = [];
+    this._buffering = false;
     this._bufferingInterval = null;
     this._connected = false;
     this._api = types.utils.request;
-    this._config = _config;
     types.utils.setupConfig({
       params: { apikey: _config.apiKey },
-      baseURL: _config.baseUrl
+      baseURL: `${_config.protocol ?? "http"}://${_config.host ?? "localhost"}:${_config.port ?? 6627}${_config.path ?? "/"}`
     });
   }
   get isConnected() {
@@ -27,7 +28,7 @@ class WriteConnection {
     if (!apiKey)
       throw new Error("Invalid API key !");
     console.log("RM2: WriteConnection connected");
-    const data = await this._api("Post", "/session", this._config.session ? this._config.session : {});
+    const { data } = await this._api("Post", "/session", this._config.session ? this._config.session : {});
     this._sessionId = data.id;
     console.log("created session", this._sessionId);
     this._connected = true;
@@ -39,38 +40,32 @@ class WriteConnection {
       return;
     }
     clearInterval(this._bufferingInterval);
-    this.postEvent("end", { ...emitted });
+    this.postEvent({ ...emitted, type: "end" });
     await this.sendData();
     this._bufferingInterval = null;
     this._connected = false;
   }
   async sendData() {
+    if (this._buffering || this._eventQueue.length === 0)
+      return 0;
     if (!this._connected) {
       throw new Error("RM2: \u274C WriteConnection client not connected");
     }
-    if (this._eventQueue.length === 0) {
-      return 0;
-    }
+    this._buffering = true;
     const eventData = this._eventQueue.map((event) => ({
       ...event,
       session_id: this._sessionId
     }));
     console.log("RM2: WriteConnection sending events", eventData);
-    await this._api("Post", "/event", eventData).then(() => {
-      this._eventQueue = [];
-    });
+    await this._api("Post", "/event", eventData);
+    this._buffering = false;
+    this._eventQueue = [];
     return eventData.length;
   }
-  postEvent(typeOrEvent, event) {
-    let eventToPost;
-    if (typeof typeOrEvent === "string") {
-      eventToPost = { type: typeOrEvent };
-    } else {
-      eventToPost = typeOrEvent;
-    }
-    if (!eventToPost.user_time)
-      eventToPost.user_time = new Date().toISOString();
-    this._eventQueue.push(eventToPost);
+  postEvent(event) {
+    if (!event.userTimestamp)
+      event.userTimestamp = new Date().toISOString();
+    this._eventQueue.push(event);
   }
   async updateSession(session) {
     this._config.session = session;
