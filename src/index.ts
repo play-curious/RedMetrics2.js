@@ -61,6 +61,7 @@ export class WriteConnection {
     );
 
     this._sessionId = data.id;
+
     console.log("created session", this._sessionId);
 
     this._connected = true;
@@ -106,11 +107,24 @@ export class WriteConnection {
 
     console.log("RM2: WriteConnection sending events", eventData);
 
-    await this._api<types.api.Event>("Post", "/event", eventData);
+    try {
+      await this._api<types.api.Event>("Post", "/event", eventData);
+
+      this._eventQueue = [];
+
+      eventData.length = 0;
+    } catch (error) {
+      if (/[45]\d{2}/.test(error.message)) {
+        this._connected = false;
+
+        console.error(error);
+
+        throw new Error("RM2: ❌ WriteConnection connection crash");
+      } else {
+      }
+    }
 
     this._buffering = false;
-    this._eventQueue = [];
-
     return eventData.length;
   }
 
