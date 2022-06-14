@@ -28,7 +28,7 @@ export class WriteConnection {
       params: { apikey: _config.apiKey },
       baseURL: `${_config.protocol ?? "http"}://${
         _config.host ?? "localhost"
-      }:${_config.port ?? 6627}${_config.path ?? "/"}`,
+      }:${_config.port ?? 6627}${_config.path ?? "/v2"}`,
     });
   }
 
