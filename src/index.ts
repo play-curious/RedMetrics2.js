@@ -102,7 +102,7 @@ export class WriteConnection {
 
     const eventData = this._eventQueue.map((event) => ({
       ...event,
-      session_id: this._sessionId as string,
+      sessionId: this._sessionId,
     }));
 
     console.log("RM2: WriteConnection sending events", eventData);
