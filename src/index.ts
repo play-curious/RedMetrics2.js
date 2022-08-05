@@ -24,11 +24,14 @@ export class WriteConnection {
   private _sessionId?: types.tables.Session["id"];
 
   constructor(private _config: ClientConfig) {
+    const protocol = _config.protocol ?? "http";
+    const host = _config.host ?? "localhost";
+    const portString = _config.port ? `:${_config.port}` : "";
+    const path = _config.path ?? "/v2";
+
     types.utils.setupConfig({
       params: { apikey: _config.apiKey },
-      baseURL: `${_config.protocol ?? "http"}://${
-        _config.host ?? "localhost"
-      }:${_config.port ?? 6627}${_config.path ?? "/v2"}`,
+      baseURL: `${protocol}://${host}${portString}${path}`,
     });
   }
 
