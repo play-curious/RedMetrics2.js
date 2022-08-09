@@ -1,11 +1,11 @@
 {
   "name": "redmetrics2.js",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "main": "dist/cjs/index.js",
   "types": "dist/cjs/index.d.ts",
   "module": "dist/esm/index.js",
-  "browser": "dist/iife/redmetrics.bundle.js",
+  "browser": "dist/iife/rm2.bundle.js",
   "scripts": {
     "format": "npx prettier --write src gulpfile.js tsconfig.* tests",
     "bundle": "gulp bundle",
