@@ -60,6 +60,17 @@ redmetricsConnection.updateSession({
 });
 ```
 
+## Upgrading from RedMetrics v1 (RM1)
+
+To upgrade from RM1, do the following:
+
+1. Include or import the new file (`rm2.bundle.js`)
+2. Update the connection information to include API key instead of the "game version"
+3. `redmetrics.prepareWriteConnection()` becomes `new rm2.WriteConnection()`
+4. Change references from `player` to `session`
+  * `playerId` => `sessionId`
+  * `updatePlayer()` => `updateSession()` 
+
 ## Development
 
 Install dependencies with `npm install`.
