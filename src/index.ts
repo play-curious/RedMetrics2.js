@@ -23,7 +23,7 @@ export class WriteConnection {
   private _api = types.utils.request;
   private _sessionId?: types.tables.Session["id"];
 
-  constructor(private _config: ClientConfig) {
+  public constructor(private _config: ClientConfig) {
     types.utils.setupConfig({
       params: { apikey: _config.apiKey },
       baseURL: `${_config.protocol ?? "http"}://${
@@ -32,15 +32,15 @@ export class WriteConnection {
     });
   }
 
-  get isConnected(): boolean {
+  public get isConnected(): boolean {
     return this._connected;
   }
 
-  get sessionId(): types.Id | undefined {
+  public get sessionId(): types.Id | undefined {
     return this._sessionId;
   }
 
-  async connect(): Promise<void> {
+  public async connect(): Promise<void> {
     console.log("RM2: WriteConnection connecting...");
 
     if (this._connected) {
@@ -72,7 +72,7 @@ export class WriteConnection {
     );
   }
 
-  async disconnect(emitted?: EmittedEvent): Promise<void> {
+  public async disconnect(emitted?: EmittedEvent): Promise<void> {
     if (!this._connected) {
       console.warn("RM2: WriteConnection already disconnected");
       return;
@@ -85,13 +85,14 @@ export class WriteConnection {
     await this.sendData();
 
     this._bufferingInterval = null;
+    this._sessionId = undefined;
     this._connected = false;
   }
 
   /**
    * Sends the current buffer of events, and return the number of events sent
    */
-  async sendData(): Promise<number> {
+  public async sendData(): Promise<number> {
     if (this._buffering || this._eventQueue.length === 0) return 0;
 
     if (!this._connected) {
@@ -131,13 +132,15 @@ export class WriteConnection {
   /**
    * Add the given event to the buffer of events to be sent
    */
-  postEvent(event: EmittedEvent): void {
+  public postEvent(event: EmittedEvent): void {
     if (!event.userTimestamp) event.userTimestamp = new Date().toISOString();
 
     this._eventQueue.push(event);
   }
 
-  async updateSession(session: Partial<types.tables.Session>): Promise<void> {
+  public async updateSession(
+    session: Partial<types.tables.Session>
+  ): Promise<void> {
     this._config.session = session;
 
     // If not connected, return immediately
